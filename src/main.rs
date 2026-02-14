@@ -1,8 +1,10 @@
 use iced::widget::text;
-use iced::{Element, Sandbox, Settings};
+use iced::Element;
 
 fn main() -> iced::Result {
-    Editor::run(Settings::default())
+    iced::application(|| Editor, Editor::update, Editor::view)
+        .title("My Editor")
+        .run()
 }
 
 struct Editor;
@@ -10,24 +12,12 @@ struct Editor;
 #[derive(Debug)]
 enum Message {}
 
-impl Sandbox for Editor {
-    type Message = Message;
-
-    fn new() -> Self {
-        Self
+impl Editor {
+    fn update(&mut self, message: Message) {
+        match message {}
     }
 
-    fn title(&self) -> String {
-        String::from("My Editor")
-    }
-
-    fn update(&mut self, message: Self::Message) {
-        match message {
-            
-        }
-    }
-
-    fn view(&self) -> Element<'_, Self::Message> {
+    fn view(&self) -> Element<'_, Message> {
         text("Hello, world!").into()
     }
 }
