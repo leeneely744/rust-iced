@@ -1,4 +1,4 @@
-use iced::widget::text;
+use iced::widget::{button, text, column};
 use iced::Element;
 
 fn main() -> iced::Result {
@@ -9,15 +9,24 @@ fn main() -> iced::Result {
 
 struct Editor;
 
-#[derive(Debug)]
-enum Message {}
+#[derive(Debug, Clone)]
+enum Message {
+    ButtonPressed,
+}
 
 impl Editor {
     fn update(&mut self, message: Message) {
-        match message {}
+        match message {
+            Message::ButtonPressed => {
+                println!("Button pressed in update!");
+            }
+        }
     }
 
     fn view(&self) -> Element<'_, Message> {
-        text("Hello, world!").into()
+        column![
+            text("Hello, world!"),
+            button("Press me!").on_press(Message::ButtonPressed),
+        ].into()
     }
 }
