@@ -21,11 +21,15 @@ impl Editor {
 enum Message {
     InputChanged(String),
     ButtonPressed,
+    ButtonFileSelect,
 }
 
 impl Editor {
     fn update(&mut self, message: Message) {
         match message {
+            Message::ButtonFileSelect => {
+                println!("Button File Select")
+            }
             Message::InputChanged(value) => {
                 self.input_text = value;
             }
@@ -38,8 +42,9 @@ impl Editor {
 
     fn view(&self) -> Element<'_, Message> {
         let content = Column::new()
+            .push(button("File Select").on_press(Message::ButtonFileSelect))
             .push(text_input("Type something...", &self.input_text).on_input(Message::InputChanged))
-            .push(button("Push!").on_press(Message::ButtonPressed));
+            .push(button("Send").on_press(Message::ButtonPressed));
         let content = self.lines.iter().fold(content, |content, l| {
             content.push(text(l))
         });
