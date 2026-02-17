@@ -1,5 +1,8 @@
-use iced::widget::{Column, button, column, text, text_input};
+use std::path::PathBuf;
+
+use iced::widget::{Column, button, text, text_input};
 use iced::Element;
+use rfd::FileDialog;
 
 fn main() -> iced::Result {
     iced::application(|| Editor { lines: Vec::new(), input_text: String::new() }, Editor::update, Editor::view)
@@ -28,7 +31,18 @@ impl Editor {
     fn update(&mut self, message: Message) {
         match message {
             Message::ButtonFileSelect => {
-                println!("Button File Select")
+                let file = FileDialog::new()
+                    .add_filter("picture", &["png", "jpg", "jpeg"])
+                    .set_directory("/")
+                    .pick_file();
+                match file {
+                    Some(file) => {
+                        println!("picked file path: {}", file.as_path().display())
+                    }
+                    None => {
+                        println!("file picking is failed!")
+                    }
+                }
             }
             Message::InputChanged(value) => {
                 self.input_text = value;
