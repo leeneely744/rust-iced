@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
-use iced::widget::{Column, button, text, text_input};
+use iced::widget::{Column, button, text, text_input, Image};
 use iced::Element;
 use rfd::FileDialog;
 
 fn main() -> iced::Result {
-    iced::application(|| Editor { lines: Vec::new(), input_text: String::new() }, Editor::update, Editor::view)
+    iced::application(|| Editor { lines: Vec::new(), input_text: String::new(), image_path: None }, Editor::update, Editor::view)
         .title("My Editor")
         .run()
 }
@@ -13,6 +13,7 @@ fn main() -> iced::Result {
 struct Editor {
     lines: Vec<String>,
     input_text: String,
+    image_path: Option<PathBuf>,
 }
 impl Editor {
     fn push_line(&mut self, new_line: &str) {
@@ -37,10 +38,10 @@ impl Editor {
                     .pick_file();
                 match file {
                     Some(file) => {
-                        println!("picked file path: {}", file.as_path().display())
+                        self.image_path = Some(file);
                     }
                     None => {
-                        println!("file picking is failed!")
+                        println!("file picking is failed!");
                     }
                 }
             }
@@ -55,8 +56,12 @@ impl Editor {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let content = Column::new()
-            .push(button("File Select").on_press(Message::ButtonFileSelect))
+        let mut content = Column::new()
+            .push(button("File Select").on_press(Message::ButtonFileSelect));
+        if let Some(ref path) = self.image_path {
+            content = content.push(Image::new(path.as_path())).width(300);
+        }
+        let content = content
             .push(text_input("Type something...", &self.input_text).on_input(Message::InputChanged))
             .push(button("Send").on_press(Message::ButtonPressed));
         let content = self.lines.iter().fold(content, |content, l| {
