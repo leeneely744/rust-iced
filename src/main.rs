@@ -2,22 +2,51 @@ use std::path::PathBuf;
 
 use iced::widget::{Column, button, text, text_input, Image};
 use iced::Element;
+
 use rfd::FileDialog;
+use rig::completion::Prompt;
+use rig::{providers::openai};
+use rig::agent::Agent;
+use rig::client::{ProviderClient, CompletionClient};
+use rig::completion::PromptError;
 
 fn main() -> iced::Result {
-    iced::application(|| Editor { lines: Vec::new(), input_text: String::new(), image_path: None }, Editor::update, Editor::view)
-        .title("My Editor")
-        .run()
+    iced::application(
+        || {
+            let client = openai::Client::from_env(); // need env variable OPENAI_API_KEY
+            let agent = client.agent("gpt-4")
+                .preamble("You are a chatbot.")
+                .temperature(0.7)
+                .build();
+            
+            Editor {
+                lines: Vec::new(),
+                input_text: String::new(),
+                image_path: None,
+                agent
+            }
+        },
+        Editor::update,
+        Editor::view
+    )
+    .title("My Editor")
+    .run()
 }
 
 struct Editor {
     lines: Vec<String>,
     input_text: String,
     image_path: Option<PathBuf>,
+    agent: Agent<openai::responses_api::ResponsesCompletionModel>,
 }
 impl Editor {
     fn push_line(&mut self, new_line: &str) {
         self.lines.push(new_line.to_string());
+    }
+    async fn chat(&mut self, new_line: &str) -> Result<(), PromptError> {
+        let response: String = self.agent.prompt(new_line).await?;
+        self.push_line(&response);
+        Ok(())
     }
 }
 
@@ -49,8 +78,10 @@ impl Editor {
                 self.input_text = value;
             }
             Message::ButtonPressed => {
-                self.push_line(&self.input_text.clone());
+                let input_text = &self.input_text.clone();
+                self.push_line(input_text);
                 self.input_text.clear();
+                self.chat(input_text);
             }
         }
     }
