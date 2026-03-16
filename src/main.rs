@@ -5,15 +5,15 @@ use iced::{Element, Task};
 
 use rfd::FileDialog;
 use rig::completion::Prompt;
-use rig::{providers::openai};
 use rig::agent::Agent;
-use rig::client::{ProviderClient, CompletionClient};
+use rig::client::{CompletionClient, Nothing, ProviderClient};
+use rig::providers::ollama;
 
 fn main() -> iced::Result {
     iced::application(
         || {
-            let client = openai::Client::from_env(); // need env variable OPENAI_API_KEY
-            let agent = client.agent("gpt-4")
+            let client = ollama::Client::from_val(Nothing);
+            let agent = client.agent("llama3.2")
                 .preamble("You are a chatbot.")
                 .temperature(0.7)
                 .build();
@@ -36,7 +36,7 @@ struct Editor {
     lines: Vec<String>,
     input_text: String,
     image_path: Option<PathBuf>,
-    agent: Agent<openai::responses_api::ResponsesCompletionModel>,
+    agent: Agent<ollama::CompletionModel>,
 }
 impl Editor {
     fn push_line(&mut self, new_line: &str) {
