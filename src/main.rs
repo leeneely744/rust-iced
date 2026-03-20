@@ -7,19 +7,13 @@ use iced::{Element, Task};
 use image::ImageFormat;
 use rfd::FileDialog;
 use rig::agent::Agent;
-use rig::client::{CompletionClient, Nothing, ProviderClient};
 use rig::completion::Prompt;
-use rig::providers::ollama;
+use rig::providers::ollama::CompletionModel as OllamaCompletionModel;
 
 fn main() -> iced::Result {
     iced::application(
         || {
-            let client = ollama::Client::from_val(Nothing);
-            let agent = client
-                .agent("llama3.2")
-                .preamble("You are a chatbot.")
-                .temperature(0.7)
-                .build();
+            let agent = ollama::MyOllama.generate_agent();
 
             Editor {
                 lines: Vec::new(),
@@ -39,7 +33,7 @@ struct Editor {
     lines: Vec<String>,
     input_text: String,
     image_path: Option<PathBuf>,
-    agent: Agent<ollama::CompletionModel>,
+    agent: Agent<OllamaCompletionModel>,
 }
 
 impl Editor {
