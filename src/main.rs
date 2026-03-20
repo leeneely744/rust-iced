@@ -1,32 +1,35 @@
+use std::io::Cursor;
 use std::path::PathBuf;
 
-use iced::widget::{Column, button, text, text_input, Image};
+use base64::{Engine as _, engine::general_purpose};
+use iced::widget::{Column, Image, button, text, text_input};
 use iced::{Element, Task};
-
+use image::ImageFormat;
 use rfd::FileDialog;
-use rig::completion::Prompt;
 use rig::agent::Agent;
 use rig::client::{CompletionClient, Nothing, ProviderClient};
+use rig::completion::Prompt;
 use rig::providers::ollama;
 
 fn main() -> iced::Result {
     iced::application(
         || {
             let client = ollama::Client::from_val(Nothing);
-            let agent = client.agent("llama3.2")
+            let agent = client
+                .agent("llama3.2")
                 .preamble("You are a chatbot.")
                 .temperature(0.7)
                 .build();
-            
+
             Editor {
                 lines: Vec::new(),
                 input_text: String::new(),
                 image_path: None,
-                agent
+                agent,
             }
         },
         Editor::update,
-        Editor::view
+        Editor::view,
     )
     .title("My Editor")
     .run()
@@ -38,6 +41,7 @@ struct Editor {
     image_path: Option<PathBuf>,
     agent: Agent<ollama::CompletionModel>,
 }
+
 impl Editor {
     fn push_line(&mut self, new_line: &str) {
         self.lines.push(new_line.to_string());
@@ -51,6 +55,35 @@ enum Message {
     ButtonFileSelect,
     ChatSucceeded(String),
     ChatFailed(String),
+}
+
+async fn chat_with_image(prompt: String, image_path: PathBuf) -> Result<String, String> {
+    let img = image::open(&image_path).map_err(|e| e.to_string())?;
+    let mut buf = Cursor::new(Vec::new());
+    img.write_to(&mut buf, ImageFormat::Png)
+        .map_err(|e| e.to_string())?;
+    let b64 = general_purpose::STANDARD.encode(buf.into_inner());
+
+    let client = reqwest::Client::new();
+    let body = serde_json::json!({
+        "model": "llava",
+        "prompt": prompt,
+        "images": [b64],
+        "stream": false
+    });
+
+    let response = client
+        .post("http://localhost:11434/api/generate")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+    Ok(json["response"]
+        .as_str()
+        .unwrap_or("No response")
+        .to_string())
 }
 
 impl Editor {
@@ -83,15 +116,25 @@ impl Editor {
 
                 self.push_line(&input_text);
                 self.input_text.clear();
-                let agent = self.agent.clone();
 
-                Task::perform(
-                    async move { agent.prompt(input_text).await },
-                    |result| match result {
-                        Ok(response) => Message::ChatSucceeded(response),
-                        Err(error) => Message::ChatFailed(error.to_string()),
-                    },
-                )
+                if let Some(image_path) = self.image_path.clone() {
+                    Task::perform(
+                        chat_with_image(input_text, image_path),
+                        |result| match result {
+                            Ok(response) => Message::ChatSucceeded(response),
+                            Err(error) => Message::ChatFailed(error),
+                        },
+                    )
+                } else {
+                    let agent = self.agent.clone();
+                    Task::perform(
+                        async move { agent.prompt(input_text).await },
+                        |result| match result {
+                            Ok(response) => Message::ChatSucceeded(response),
+                            Err(error) => Message::ChatFailed(error.to_string()),
+                        },
+                    )
+                }
             }
             Message::ChatSucceeded(response) => {
                 self.push_line(&response);
@@ -111,7 +154,10 @@ impl Editor {
             content = content.push(Image::new(path.as_path())).width(300);
         }
         let content = content
-            .push(text_input("Type something...", &self.input_text).on_input(Message::InputChanged))
+            .push(
+                text_input("Type something...", &self.input_text)
+                    .on_input(Message::InputChanged),
+            )
             .push(button("Send").on_press(Message::ButtonPressed));
         let content = self.lines.iter().fold(content, |content, l| {
             content.push(text(l))
