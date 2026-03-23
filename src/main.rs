@@ -1,3 +1,5 @@
+mod ollama;
+
 use std::io::Cursor;
 use std::path::PathBuf;
 
@@ -132,10 +134,12 @@ impl Editor {
             }
             Message::ChatSucceeded(response) => {
                 self.push_line(&response);
+                println!("success");
                 Task::none()
             }
             Message::ChatFailed(error) => {
                 self.push_line(&format!("Error: {error}"));
+                println!("failed");
                 Task::none()
             }
         }
